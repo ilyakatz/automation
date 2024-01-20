@@ -18,6 +18,7 @@ const argv = yargs
     'avg-per-day': { type: 'number', demandOption: true },
     'days-of-occupancy': { type: 'number', demandOption: true },
     'amount-due': { type: 'number', demandOption: true },
+    'debug': { type: 'boolean', default: false },
   })
   .argv as any; // Add this line
 
@@ -51,6 +52,11 @@ const mailOptions: nodemailer.SendMailOptions = {
 };
 
 console.log('Opening perview.html...');
+
+if (argv.debug) {
+    console.log('Debugging mode enabled. Email not sent. Exiting...');
+    process.exit(0);
+}
 
 // Ask for confirmation before sending the email
 const prompt = require('prompt-sync')();
