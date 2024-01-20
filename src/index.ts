@@ -4,6 +4,8 @@ import * as nodemailer from 'nodemailer';
 import * as yargs from 'yargs';
 import * as dotenv from 'dotenv';
 import { generateEmailBody } from './emailContent';
+import * as fs from 'fs';
+
 
 dotenv.config();
 
@@ -27,22 +29,28 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const previewHtml = generateEmailBody(
+  argv['billing-start'] as string,
+  argv['billing-date'] as string,
+  argv.total as number,
+  argv['avg-per-day'] as number,
+  argv['days-of-occupancy'] as number,
+  argv['amount-due'] as number
+);
+
+fs.writeFileSync('preview.html', previewHtml);
+
+const { exec } = require('child_process');
+exec('open preview.html'); // For macOS/Linux
+
 const mailOptions: nodemailer.SendMailOptions = {
   from: process.env.GMAIL_USERNAME,
   to: argv.to as string, // Typecast to string
   subject: 'Water and Sewer Usage Billing Information',
-  html: generateEmailBody(
-    argv['billing-start'] as string,
-    argv['billing-date'] as string,
-    argv.total as number,
-    argv['avg-per-day'] as number,
-    argv['days-of-occupancy'] as number,
-    argv['amount-due'] as number
-  ),
+  html: previewHtml
 };
 
-console.log('Email Content:');
-console.log(mailOptions.html);
+console.log('Opening perview.html...');
 
 // Ask for confirmation before sending the email
 const prompt = require('prompt-sync')();
