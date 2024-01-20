@@ -1,0 +1,1 @@
+1. Generate app password https://myaccount.google.com/apppasswords
