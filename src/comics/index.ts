@@ -26,10 +26,11 @@
  * Do not close browser if there is an error
 */
 
-import puppeteer from 'puppeteer';
+import puppeteer, {Page} from 'puppeteer';
 import fs from 'fs';
 import { promisify } from 'util';
 import PDFDocument from 'pdfkit';
+import https from 'https';
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -41,7 +42,7 @@ async function downloadComicImages(comicUrl: string) {
   try {
     console.log('Starting the comic download process...');
     browser = await puppeteer.launch({ headless: false }); // Change to true if you don't want to see the browser
-    const page = await browser.newPage();
+    const page: Page = await browser.newPage();
     await page.goto(comicUrl);
 
     let pageNumber = 1;
@@ -49,8 +50,11 @@ async function downloadComicImages(comicUrl: string) {
       console.log(`Downloading page ${pageNumber}...`);
       // Wait until the image element is present
       await page.waitForSelector('img[data-v-824c3600]');
+      await page.waitForSelector('.reader-progress-wrap');
+      await removeElement(page, '.reader-progress-wrap'); // Remove the progress bar
       const imageSrc = await page.$eval('img[data-v-824c3600]', (img) => (img as HTMLImageElement).src);
 
+      console.log('Image source:', imageSrc);
       if (!imageSrc) {
         console.log('No more pages found. Exiting...');
         break;
@@ -70,10 +74,21 @@ async function downloadComicImages(comicUrl: string) {
     console.error('Error during comic download:', error);
   } finally {
     if (browser) {
-      // await browser.close();
+      await browser.close();
     }
   }
 }
+
+async function removeElement(page: Page, selector: string): Promise<void> {
+    await page.evaluate((sel) => {
+        const elements = document.querySelectorAll(sel);
+        elements.forEach(element => {
+          console.log('Removing element:', element);
+            element.remove();
+        });
+    }, selector);
+}
+
 
 async function saveImage(imageBuffer: Buffer, pageNumber: number) {
   const directory = './temp';
@@ -91,6 +106,16 @@ async function saveImage(imageBuffer: Buffer, pageNumber: number) {
 async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
   try {
     const files = await readdir(directory);
+    const A4_WIDTH_PIXELS = 595;
+    const A4_HEIGHT_PIXELS = 842;
+    const MARGIN_TOP_PIXELS = 20; // Example margin top in pixels
+    const MARGIN_BOTTOM_PIXELS = 20; // Example margin bottom in pixels
+    const MARGIN_LEFT_PIXELS = 20; // Example margin left in pixels
+    const MARGIN_RIGHT_PIXELS = 20; // Example margin right in pixels
+
+    const usableWidth = A4_WIDTH_PIXELS - MARGIN_LEFT_PIXELS - MARGIN_RIGHT_PIXELS;
+    const usableHeight = A4_HEIGHT_PIXELS - MARGIN_TOP_PIXELS - MARGIN_BOTTOM_PIXELS;
+
     
     if (files.length === 0) {
       console.log('No images found in the directory.');
@@ -105,7 +130,8 @@ async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
     for (let i = 0; i < files.length; i++) {
       const imagePath = `${directory}/${files[i]}`;
       if (imagePath.endsWith('.png')) {
-        pdf.addPage({ size: [595, 842] }); // A4 size in pixels
+        // pdf.addPage({ size: [595, 842] }); // A4 size in pixels
+        pdf.addPage({ size: [usableWidth, usableHeight] });
         pdf.image(imagePath, 0, 0, { width: 595 });
       }
     }
@@ -119,10 +145,9 @@ async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
 }
 
 // Example usage:
-// const comicUrl = 'https://mangadex.org/chapter/2e22407f-4628-4559-88c8-bb76eea7aaf1';
-// downloadComicImages(comicUrl);
-
-const inputDirectory = './temp';
-const outputPDFPath = './comic.pdf';
-combineImagesIntoPDF(inputDirectory, outputPDFPath);
-
+const comicUrl = 'https://mangadex.org/chapter/046fec34-0e88-4f42-9f42-164a0d94f90a';
+downloadComicImages(comicUrl).then(() => {
+  const inputDirectory = './temp';
+  const outputPDFPath = `${inputDirectory}/comic.pdf`;
+  combineImagesIntoPDF(inputDirectory, outputPDFPath);
+})
