@@ -29,9 +29,12 @@
 import puppeteer from 'puppeteer';
 import fs from 'fs';
 import { promisify } from 'util';
+import PDFDocument from 'pdfkit';
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
+const readdir = promisify(fs.readdir);
+
 
 async function downloadComicImages(comicUrl: string) {
   let browser;
@@ -42,7 +45,7 @@ async function downloadComicImages(comicUrl: string) {
     await page.goto(comicUrl);
 
     let pageNumber = 1;
-    while (true) {
+    while (true && pageNumber < 5) {
       console.log(`Downloading page ${pageNumber}...`);
       // Wait until the image element is present
       await page.waitForSelector('img[data-v-824c3600]');
@@ -84,8 +87,42 @@ async function saveImage(imageBuffer: Buffer, pageNumber: number) {
   }
 }
 
-// Example usage:
-const comicUrl = 'https://mangadex.org/chapter/2e22407f-4628-4559-88c8-bb76eea7aaf1';
-downloadComicImages(comicUrl);
 
+async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
+  try {
+    const files = await readdir(directory);
+    
+    if (files.length === 0) {
+      console.log('No images found in the directory.');
+      return;
+    }
+
+    const pdfStream = fs.createWriteStream(outputFilePath);
+    const pdf = new PDFDocument({ autoFirstPage: false });
+
+    pdf.pipe(pdfStream);
+
+    for (let i = 0; i < files.length; i++) {
+      const imagePath = `${directory}/${files[i]}`;
+      if (imagePath.endsWith('.png')) {
+        pdf.addPage({ size: [595, 842] }); // A4 size in pixels
+        pdf.image(imagePath, 0, 0, { width: 595 });
+      }
+    }
+
+    pdf.end();
+
+    console.log(`PDF file created successfully: ${outputFilePath}`);
+  } catch (error) {
+    console.error('Error combining images into PDF:', error);
+  }
+}
+
+// Example usage:
+// const comicUrl = 'https://mangadex.org/chapter/2e22407f-4628-4559-88c8-bb76eea7aaf1';
+// downloadComicImages(comicUrl);
+
+const inputDirectory = './temp';
+const outputPDFPath = './comic.pdf';
+combineImagesIntoPDF(inputDirectory, outputPDFPath);
 
