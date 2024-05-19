@@ -6,6 +6,8 @@ Scripts to automate various tasks
 
 ```
 yarn install
+yarn add sharp --ignore-engines
+
 ```
 
 Copy `sample.env` to `.env` and update the values

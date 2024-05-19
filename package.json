@@ -10,11 +10,14 @@
     "fs-extra": "^11.2.0",
     "https": "^1.0.0",
     "image-downloader": "^4.3.0",
+    "jimp": "^0.22.12",
     "nodemailer": "^6.9.8",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.15.0",
     "prompt-sync": "^4.2.0",
     "puppeteer": "^22.9.0",
+    "sharp": "^0.33.4",
+    "string-width": "^7.1.0",
     "yargs": "^17.7.2"
   },
   "scripts": {

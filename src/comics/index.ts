@@ -30,7 +30,11 @@ import puppeteer, {Page} from 'puppeteer';
 import fs, { Dirent } from 'fs';
 import { promisify } from 'util';
 import PDFDocument from 'pdfkit';
-import https from 'https';
+import jimp from 'jimp';
+import { get } from 'http';
+import sharp from 'sharp';
+import path from 'path';
+
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -145,51 +149,68 @@ async function saveImage(
     }
 }
 
-
 async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
-  console.debug('............................................')
-  console.log(`Combining images into PDF from ${directory}...`);
-  try {
-    const files = await readdir(directory);
-    const A4_WIDTH_PIXELS = 595;
-    const A4_HEIGHT_PIXELS = 842;
-    const MARGIN_TOP_PIXELS = 20; // Example margin top in pixels
-    const MARGIN_BOTTOM_PIXELS = 20; // Example margin bottom in pixels
-    const MARGIN_LEFT_PIXELS = 20; // Example margin left in pixels
-    const MARGIN_RIGHT_PIXELS = 20; // Example margin right in pixels
+    console.debug('............................................');
+    console.log(`Combining images into PDF from ${directory}...`);
+    try {
+        const files = await readdir(directory);
+        const A4_WIDTH_PIXELS = 595;
+        const A4_HEIGHT_PIXELS = 842;
+        const MARGIN_TOP_PIXELS = 20; // Example margin top in pixels
+        const MARGIN_BOTTOM_PIXELS = 20; // Example margin bottom in pixels
+        const MARGIN_LEFT_PIXELS = 20; // Example margin left in pixels
+        const MARGIN_RIGHT_PIXELS = 20; // Example margin right in pixels
 
-    const usableWidth = A4_WIDTH_PIXELS - MARGIN_LEFT_PIXELS - MARGIN_RIGHT_PIXELS;
-    const usableHeight = A4_HEIGHT_PIXELS - MARGIN_TOP_PIXELS - MARGIN_BOTTOM_PIXELS;
+        const usableWidth = A4_WIDTH_PIXELS - MARGIN_LEFT_PIXELS - MARGIN_RIGHT_PIXELS;
+        const usableHeight = A4_HEIGHT_PIXELS - MARGIN_TOP_PIXELS - MARGIN_BOTTOM_PIXELS;
 
-    
-    if (files.length === 0) {
-      console.log('No images found in the directory.');
-      return;
+        if (files.length === 0) {
+            console.log('No images found in the directory.');
+            return;
+        }
+
+        const pdfStream = fs.createWriteStream(outputFilePath);
+        const pdf = new PDFDocument({ autoFirstPage: false });
+
+        pdf.pipe(pdfStream);
+
+        for (let i = 0; i < files.length; i++) {
+            const imagePath = `${directory}/${files[i]}`;
+            if (imagePath.endsWith('.png')) {
+                // Process the image to remove whitespace
+                const processedImagePath = await removeWhitespaceFromImage(imagePath);
+                console.log('Processed image:', processedImagePath);
+
+                const parts = imagePath.split('/');
+                const fileNameWithoutExtension = parts[2].split('.png')[0];
+                const [volume, chapter, page] = fileNameWithoutExtension.split('_').map(Number);
+                pdf.addPage({ size: [usableWidth, usableHeight] });
+                pdf.image(processedImagePath, 10, 20, { width: 485 });
+                pdf.fontSize(12).text(`Vol: ${volume}, Ch: ${chapter}, ${page}`, 10, 10);
+            }
+        }
+
+        pdf.end();
+
+        console.log(`PDF file created successfully: ${outputFilePath}`);
+    } catch (error) {
+        console.error('Error combining images into PDF:', error);
+    }
+}
+
+async function removeWhitespaceFromImage(imagePath: string): Promise<string> {
+    const outputDir = 'processed_temp'; // Specify the output directory
+    const processedImagePath = path.join(outputDir, path.basename(imagePath));
+
+    // Create the output directory if it doesn't exist
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const pdfStream = fs.createWriteStream(outputFilePath);
-    const pdf = new PDFDocument({ autoFirstPage: false });
-
-    pdf.pipe(pdfStream);
-
-    for (let i = 0; i < files.length; i++) {
-      const imagePath = `${directory}/${files[i]}`;
-      if (imagePath.endsWith('.png')) {
-        const parts = imagePath.split('/');
-        const fileNameWithoutExtension = parts[2].split('.png')[0];
-        const [volume, chapter, page] = fileNameWithoutExtension.split('_').map(Number);
-        pdf.addPage({ size: [usableWidth, usableHeight] });
-        pdf.image(imagePath, 50, 50, { width: 595 });
-        pdf.fontSize(12).text(`Vol: ${volume}, Ch: ${chapter}, ${page}`, 10, 10);
-      }
-    }
-
-    pdf.end();
-
-    console.log(`PDF file created successfully: ${outputFilePath}`);
-  } catch (error) {
-    console.error('Error combining images into PDF:', error);
-  }
+    await sharp(imagePath)
+        .trim()
+        .toFile(processedImagePath);
+    return processedImagePath;
 }
 
 interface Chapter {
