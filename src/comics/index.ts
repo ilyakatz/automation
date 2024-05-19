@@ -128,15 +128,15 @@ async function removeElement(page: Page, selector: string): Promise<void> {
 
 
 async function saveImage(
-  imageBuffer: Buffer,
+  imageBuffer: Buffer, 
   volume: string,
   chapter: string,
-  pageNumber: number,
-  directory: string)
+  pageNumber: number, 
+  directory: string) 
   {
     const paddedPageNumber = String(pageNumber).padStart(3, '0');
     const filePath = `${directory}/${volume}_${chapter}_${paddedPageNumber}.png`;
-
+     
     try {
       await mkdir(directory, { recursive: true });
       await writeFile(filePath, imageBuffer);
@@ -235,7 +235,7 @@ fs.readFile('src/comics/chapters.json', 'utf8', (err, data) => {
             }
         }
 
-        console.log(chapterIds);
+        console.log(chapterIds); 
         downloadVolume(chapterIds).then(() => {
             console.log('All volumes downloaded successfully.');
             volumesNumbers.forEach((volume) => {
@@ -256,7 +256,7 @@ async function downloadVolume(chapterIds: string[]) {
     const comicUrl = `https://mangadex.org/chapter/${chapter}`;
     const directory = `temp`;
     await downloadComicImages(
-      comicUrl,
+      comicUrl, 
       directory,
     )
     // .then((chapterName) => {
