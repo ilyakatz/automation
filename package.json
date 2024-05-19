@@ -23,6 +23,7 @@
   "scripts": {
     "water": "ts-node src/water/index.ts",
     "comics": "ts-node src/comics/index.ts",
+    "comics-man": "ts-node src/comics-man/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
