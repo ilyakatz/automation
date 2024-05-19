@@ -34,6 +34,7 @@ import jimp from 'jimp';
 import { get } from 'http';
 import sharp from 'sharp';
 import path from 'path';
+import { promises as fsPromises } from 'fs';
 
 
 const mkdir = promisify(fs.mkdir);
@@ -149,11 +150,50 @@ async function saveImage(
     }
 }
 
+async function getFileNames(directory: string): Promise<string[]> {
+    try {
+        const files: string[] = await fsPromises.readdir(directory);
+        // Custom sorting function to sort filenames numerically
+        files.sort((a: string, b: string): number => {
+            // Extract numeric parts from filenames
+            const numA: number = parseFloat(a.match(/[\d.]+/)![0]);
+            const numB: number = parseFloat(b.match(/[\d.]+/)![0]);
+
+            // Split filenames into parts
+            const partsA = a.split('_');
+            const partsB = b.split('_');
+
+            // If filenames have different parts before the decimal point,
+            // compare them based on those parts
+            if (partsA[0] !== partsB[0]) {
+                return parseInt(partsA[0]) - parseInt(partsB[0]);
+            }
+
+            // If filenames have different parts after the decimal point,
+            // compare them based on those parts
+            if (partsA[1] !== partsB[1]) {
+                return parseFloat(partsA[1]) - parseFloat(partsB[1]);
+            }
+
+            // If filenames are identical, or both don't have decimal parts,
+            // compare them numerically
+            return numA - numB;
+        });
+
+        console.log(files); // This will log an array of file names sorted numerically
+        return files;
+    } catch (error) {
+        console.error('Error reading directory:', error);
+        return [];
+    }
+}
+
+
 async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
     console.debug('............................................');
     console.log(`Combining images into PDF from ${directory}...`);
     try {
-        const files = await readdir(directory);
+        const files = await getFileNames(directory);
         const A4_WIDTH_PIXELS = 595;
         const A4_HEIGHT_PIXELS = 842;
         const MARGIN_TOP_PIXELS = 20; // Example margin top in pixels
