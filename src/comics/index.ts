@@ -175,8 +175,12 @@ async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
     for (let i = 0; i < files.length; i++) {
       const imagePath = `${directory}/${files[i]}`;
       if (imagePath.endsWith('.png')) {
+        const parts = imagePath.split('/');
+        const fileNameWithoutExtension = parts[2].split('.png')[0];
+        const [volume, chapter, page] = fileNameWithoutExtension.split('_').map(Number);
         pdf.addPage({ size: [usableWidth, usableHeight] });
-        pdf.image(imagePath, 0, 0, { width: 595 });
+        pdf.image(imagePath, 50, 50, { width: 595 });
+        pdf.fontSize(12).text(`Vol: ${volume}, Ch: ${chapter}, ${page}`, 10, 10);
       }
     }
 
@@ -259,10 +263,5 @@ async function downloadVolume(chapterIds: string[]) {
       comicUrl, 
       directory,
     )
-    // .then((chapterName) => {
-      // const inputDirectory = `./${directory}/${chapterName}`;
-      // const outputPDFPath = `${directory}/${chapterName}.pdf`;
-      // combineImagesIntoPDF(inputDirectory, outputPDFPath);
-    // });
   }
 }
