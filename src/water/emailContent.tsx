@@ -4,7 +4,7 @@ export const generateEmailBody = (
   total: number,
   avgPerDay: number,
   daysOfOccupancy: number,
-  amountDue: number
+  amountDue: string
 ): string => {
   return `
 
