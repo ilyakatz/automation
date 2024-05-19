@@ -171,6 +171,9 @@ async function combineImagesIntoPDF(directory: string, outputFilePath: string) {
 
         const pdfStream = fs.createWriteStream(outputFilePath);
         const pdf = new PDFDocument({ autoFirstPage: false });
+        const parts = directory.split('/');
+        const volume = parts[1];
+        pdf.info.Title = `Usogui Volume ${volume}`;
 
         pdf.pipe(pdfStream);
 
