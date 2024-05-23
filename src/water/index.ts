@@ -15,10 +15,15 @@ const argv = yargs
     'billing-start': { type: 'string', demandOption: true },
     'billing-date': { type: 'string', demandOption: true },
     total: { type: 'number', demandOption: true },
-    'avg-per-day': { type: 'number', demandOption: true },
-    'days-of-occupancy': { type: 'number', demandOption: true },
-    'amount-due': { type: 'number', demandOption: true },
+    'days-of-occupancy': { 
+      type: 'number', 
+    },
     'debug': { type: 'boolean', default: false },
+    'adults': { 
+      type: 'number', 
+      demandOption: true, 
+      describe: 'Number of adults in the household'
+    }
   })
   .argv as any; // Add this line
 
@@ -30,13 +35,47 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const billingStart = argv['billing-start'] as string;
+const billingDate = argv['billing-date'] as string;
+let daysOfOccupancy: number | undefined = undefined
+const total = argv.total as number;
+const adults = argv.adults as number;
+
+
+const date1 = new Date(billingDate)
+const date2 = new Date(billingStart)
+// create a new variable numberOfDays which contains number of 
+// days between billingStart and billingDate
+const msInADay = 1000 * 60 * 60 * 24
+const differenceMs: number = date1.getTime() - date2.getTime() + msInADay;
+const numberOfDaysInTotal: number = differenceMs / (1000 * 60 * 60 * 24);
+const numberOfUnits: number = 2
+// create a new variable avgPerDay which contains the average amount
+// per day or unit
+const ratio = (2/3) * adults
+const avgPerDay = (total / numberOfDaysInTotal / numberOfUnits) * (ratio);
+if( argv['days-of-occupancy'] === undefined ) {
+  daysOfOccupancy = numberOfDaysInTotal;
+} else {
+  daysOfOccupancy = argv['days-of-occupancy'] as number;
+}
+const amountDue = ( avgPerDay * daysOfOccupancy ).toFixed(2);
+
+console.log('Billing Start:', billingStart);
+console.log('Billing Date:', billingDate);
+console.log('Total:', total);
+console.log('Number of Days:', numberOfDaysInTotal);
+console.log('Ratio:', ratio);
+console.log('Avg per day:', avgPerDay);
+console.log('Amount Due:', amountDue);
+
 const previewHtml = generateEmailBody(
-  argv['billing-start'] as string,
-  argv['billing-date'] as string,
-  argv.total as number,
-  argv['avg-per-day'] as number,
-  argv['days-of-occupancy'] as number,
-  argv['amount-due'] as number
+  billingStart,
+  billingDate,
+  total,
+  avgPerDay,
+  daysOfOccupancy,
+  amountDue
 );
 
 fs.writeFileSync('preview.html', previewHtml);
