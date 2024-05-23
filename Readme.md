@@ -28,6 +28,13 @@ yarn water --subject "Water and Sewer Usage Report" \
 
 ```
 
+### Manga downloader
+
+```
+yarn comics
+
+```
+
 #### Debugging
 
 Add 
