@@ -40,6 +40,7 @@ const billingDate = argv['billing-date'] as string;
 let daysOfOccupancy: number | undefined = undefined
 const total = argv.total as number;
 const adults = argv.adults as number;
+const receipts = argv.to as string;
 
 
 const date1 = new Date(billingDate)
@@ -83,9 +84,10 @@ fs.writeFileSync('preview.html', previewHtml);
 const { exec } = require('child_process');
 exec('open preview.html'); // For macOS/Linux
 
+const from = `"110-112 Beech Team"<${process.env.GMAIL_USERNAME}>`;
 const mailOptions: nodemailer.SendMailOptions = {
-  from: process.env.GMAIL_USERNAME,
-  to: argv.to as string, // Typecast to string
+  from: from,
+  to: receipts, // Typecast to string
   subject: 'Water and Sewer Usage Billing Information',
   html: previewHtml
 };
@@ -99,7 +101,7 @@ if (argv.debug) {
 
 // Ask for confirmation before sending the email
 const prompt = require('prompt-sync')();
-const answer = prompt('Do you want to send this email? (yes/no): ');
+const answer = prompt(`Do you want to send this email to ${receipts} ? (yes/no): `);
 
 if (answer.toLowerCase() === 'yes') {
   transporter.sendMail(mailOptions, (error, info) => {

@@ -16,17 +16,20 @@ Copy `sample.env` to `.env` and update the values
 ### Water billing
 
 ```
-
-yarn water --subject "Water and Sewer Usage Report" \
- --to "email1@gmail.com,email2@pm.me" \
- --billing-start "11/16/2023" \
- --billing-date "12/19/2023" \
- --total 128.85 \
- --avg-per-day  2.08 \
- --days-of-occupancy 31 \
- --amount-due 64.43
+export EMAIL_TO=.....@pm.me
+export DATE_START=3/21/2024
+export DATE_END=4/29/2024
+export TOTAL=181.44
+export ADULTS=2
+```
 
 ```
+yarn water --subject "Water and Sewer Usage Report" \
+ --to "$EMAIL_TO" \
+ --billing-start "$DATE_START" \
+ --billing-date "$DATE_END" \
+ --total $TOTAL \
+ --adults $ADULTS
 
 ### Manga downloader
 
