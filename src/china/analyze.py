@@ -80,25 +80,36 @@ def scroll_and_load_reviews(driver):
         last_height = new_height
 
 def parse_reviews(soup):
-  """
-  Parses the HTML content and extracts review details.
+    """
+    Parses the HTML content and extracts review details.
 
-  Args:
-      soup: A BeautifulSoup object representing the parsed HTML.
+    Args:
+        soup: A BeautifulSoup object representing the parsed HTML.
 
-  Returns:
-      A list of dictionaries containing extracted review details (title, body, rating, date).
-  """
-  reviews = []
-  for review_div in soup.find_all('div', {'data-hook': 'review'}):
-    review = {
-      'title': review_div.find('a', {'data-hook': 'review-title'}).get_text(strip=True),
-      'body': review_div.find('span', {'data-hook': 'review-body'}).get_text(strip=True),
-      'rating': review_div.find('i', {'data-hook': 'review-star-rating'}).get_text(strip=True),
-      'date': review_div.find('span', {'data-hook': 'review-date'}).get_text(strip=True),
-    }
-    reviews.append(review)
-  return reviews
+    Returns:
+        A list of dictionaries containing extracted review details (title, body, rating, date).
+    """
+    reviews = []
+    for review_div in soup.find_all('div', {'data-hook': 'review'}):
+        review = {}
+        # Extract review title
+        title_elem = review_div.find('a', {'data-hook': 'review-title'})
+        review['title'] = title_elem.get_text(strip=True) if title_elem else "Title not found"
+
+        # Extract review body
+        body_elem = review_div.find('span', {'data-hook': 'review-body'})
+        review['body'] = body_elem.get_text(strip=True) if body_elem else "Body not found"
+
+        # Extract review rating
+        rating_elem = review_div.find('i', {'data-hook': 'review-star-rating'})
+        review['rating'] = rating_elem.get_text(strip=True) if rating_elem else "Rating not found"
+
+        # Extract review date
+        date_elem = review_div.find('span', {'data-hook': 'review-date'})
+        review['date'] = date_elem.get_text(strip=True) if date_elem else "Date not found"
+
+        reviews.append(review)
+    return reviews
 
 def scrape_amazon_reviews(asin):
   """
@@ -195,9 +206,6 @@ def get_product_info(url):
         'text': driver.page_source  # Get the HTML content of the page
     }
 
-    # Print extracted product information
-    print(colorize_json(product_info))
-
     # Close the WebDriver
     driver.quit()
 
@@ -219,6 +227,8 @@ def save_reviews_and_product_info(reviews, product_info, filename):
     }
     with open(filename, 'w') as f:
         json.dump(data, f, indent=4)
+
+    print(f"Reviews and product information saved to file '{filename}'.")
 
 def detect_mentions_of_china(text):
     # Load pre-trained NER model
@@ -253,9 +263,10 @@ def analyze_reviews_for_origin(reviews):
     return False
 
 if __name__ == "__main__":
-    asin = "B07VFHFBLL"
+    asin = "B0BBL427LF"
     product_url = f"https://www.amazon.com/dp/{asin}"
-    reviews_filename = f"json/{asin}data.json"
+    print(f"Product URL: {product_url}")
+    reviews_filename = f"json/{asin}.json"
 
     try:
         data = json.load(open(reviews_filename))
