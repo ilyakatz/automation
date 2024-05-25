@@ -5,3 +5,4 @@ selenium
 webdriver_manager
 transformers
 torch
+spacy

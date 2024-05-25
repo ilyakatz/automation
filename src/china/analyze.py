@@ -10,43 +10,13 @@ import json
 from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 import requests
+import spacy
 
 def colorize_output(text, is_red):
     if is_red:
         return f"\033[91m{text}\033[0m"  # ANSI escape code for red color
     else:
         return f"\033[92m{text}\033[0m"  # ANSI escape code for green color
-
-def analyze_reviews_for_origin(reviews):
-    """
-    Analyzes the reviews to determine if the product is made in China.
-
-    Args:
-        reviews: A list of dictionaries containing extracted review details.
-
-    Returns:
-        True if the product is likely made in China, False otherwise.
-    """
-    # Load pre-trained BERT tokenizer
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    # Load fine-tuned BERT model for sequence classification
-    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)  # Assuming binary classification
-
-    # Prepare review text for input into the model
-    review_texts = [review['title'] + ' ' + review['body'] for review in reviews]
-
-    # Tokenize and encode review texts
-    inputs = tokenizer(review_texts, padding=True, truncation=True, return_tensors="pt")
-
-    # Perform inference using the model
-    with torch.no_grad():
-        outputs = model(**inputs)
-
-    # Predictions (assuming binary classification)
-    predictions = torch.argmax(outputs.logits, dim=1).tolist()
-
-    # Check if any review predicts the product is made in China
-    return any(pred == 1 for pred in predictions)
 
 # Function to colorize JSON string
 def colorize_json(json_str):
@@ -205,21 +175,34 @@ def get_product_info(url):
     Returns:
         A dictionary containing product information.
     """
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.content, 'html.parser')
+    options = Options()
+    options.add_argument("--headless")  # Run Chrome in headless mode
+    options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+    options.add_argument("--no-sandbox")  # Bypass OS security model
+    options.add_argument("--disable-gpu")  # Disable GPU acceleration
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
     
-    # Extract all text from the homepage
-    text = soup.get_text(separator=' ')
+    # Load the webpage
+    driver.get(url)
 
-    # You can extract more information as needed from the text
+    # Wait for the page to load (adjust the sleep time as needed)
+    time.sleep(5)
+
+    # Extract product information from the webpage
     product_info = {
         'url': url,
-        'text': text
-        # Add more fields if needed
+        'text': driver.page_source  # Get the HTML content of the page
     }
+
+    # Print extracted product information
+    print(colorize_json(product_info))
+
+    # Close the WebDriver
+    driver.quit()
+
     return product_info
+
 
 def save_reviews_and_product_info(reviews, product_info, filename):
     """
@@ -237,25 +220,36 @@ def save_reviews_and_product_info(reviews, product_info, filename):
     with open(filename, 'w') as f:
         json.dump(data, f, indent=4)
 
+def detect_mentions_of_china(text):
+    # Load pre-trained NER model
+    nlp = spacy.load("en_core_web_sm")
 
-def analyze_product_info(product_info, model):
-    """
-    Analyzes the product information to determine if the product is likely made in China.
+    # Process text with the NER model in smaller chunks
+    chunk_size = 100000  # Adjust as needed
+    chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
-    Args:
-        product_info: A dictionary containing product information.
-        model: The pre-trained BERT model for text classification.
+    # Check for mentions of China, Chinese, or similar terms in each chunk
+    for chunk in chunks:
+        doc = nlp(chunk)
+        for ent in doc.ents:
+            if ent.text.lower() in ["china", "chinese", "china's", "china-made"]:
+                return True
+    return False
 
-    Returns:
-        True if the product is likely made in China, False otherwise.
-    """
-    text = product_info['text']
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    predictions = torch.argmax(outputs.logits, dim=1)
-    # Assuming 1 represents "made in China" class
-    return bool(predictions)
+def analyze_product_info(product_info):
+    product_description = product_info['text']
+    print("Analyzing product description for mentions of China...")
+    is_made_in_china = detect_mentions_of_china(product_description)
+    print(colorize_output(f"Product description mentions China: {is_made_in_china}", is_made_in_china))
+    return is_made_in_china
+
+def analyze_reviews_for_origin(reviews):
+    for review in reviews:
+        review_text = review['body']
+        if detect_mentions_of_china(review_text):
+            print(colorize_output("Found review mentioning China:", True))
+            return True
+    return False
 
 if __name__ == "__main__":
     asin = "B07VFHFBLL"
@@ -273,10 +267,9 @@ if __name__ == "__main__":
         data = json.load(open(reviews_filename))
         print("Product data scraped and saved to file.")
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
+    print("Analyzing product data...")
 
-    is_made_in_china_info = analyze_product_info(data['product_info'], model)
+    is_made_in_china_info = analyze_product_info(data['product_info'])
     is_made_in_china_reviews = analyze_reviews_for_origin(data['reviews'])
 
     if is_made_in_china_info or is_made_in_china_reviews:
