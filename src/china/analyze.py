@@ -142,10 +142,10 @@ def scrape_amazon_reviews(asin):
       reviews.extend(parse_reviews(soup))
 
       if not navigate_to_next_page(driver):
-          print("No more reviews to load.")
+        #   print("No more reviews to load.")
           break
 
-      print(f"Scraped {len(reviews)} reviews so far.")
+      # print(f"Scraped {len(reviews)} reviews so far.")
 
   driver.quit()
 
@@ -263,7 +263,7 @@ def analyze_reviews_for_origin(reviews):
     return False
 
 if __name__ == "__main__":
-    asin = "B0BBL427LF"
+    asin = input("Enter Amazon product ASIN: ")
     product_url = f"https://www.amazon.com/dp/{asin}"
     print(f"Product URL: {product_url}")
     reviews_filename = f"json/{asin}.json"
@@ -282,9 +282,11 @@ if __name__ == "__main__":
     print("Analyzing product data...")
 
     is_made_in_china_info = analyze_product_info(data['product_info'])
-    is_made_in_china_reviews = analyze_reviews_for_origin(data['reviews'])
-
-    if is_made_in_china_info or is_made_in_china_reviews:
-        print(colorize_output("The product is likely made in China.", True))
+    if is_made_in_china_info:
+        print(colorize_output(f"The product {asin} is likely made in China.", True))
     else:
-        print(colorize_output("The product is not necessarily made in China.", False))
+        is_made_in_china_reviews = analyze_reviews_for_origin(data['reviews'])
+        if is_made_in_china_reviews:
+            print(colorize_output(f"The product {asin} is likely made in China.", True))
+        else:
+            print(colorize_output(f"The product {asin} is not necessarily made in China.", False))
