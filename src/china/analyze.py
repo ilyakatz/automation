@@ -7,6 +7,40 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import json
+from transformers import BertTokenizer, BertForSequenceClassification
+import torch
+
+
+def analyze_reviews_for_origin(reviews):
+    """
+    Analyzes the reviews to determine if the product is made in China.
+
+    Args:
+        reviews: A list of dictionaries containing extracted review details.
+
+    Returns:
+        True if the product is likely made in China, False otherwise.
+    """
+    # Load pre-trained BERT tokenizer
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    # Load fine-tuned BERT model for sequence classification
+    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)  # Assuming binary classification
+
+    # Prepare review text for input into the model
+    review_texts = [review['title'] + ' ' + review['body'] for review in reviews]
+
+    # Tokenize and encode review texts
+    inputs = tokenizer(review_texts, padding=True, truncation=True, return_tensors="pt")
+
+    # Perform inference using the model
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    # Predictions (assuming binary classification)
+    predictions = torch.argmax(outputs.logits, dim=1).tolist()
+
+    # Check if any review predicts the product is made in China
+    return any(pred == 1 for pred in predictions)
 
 # Function to colorize JSON string
 def colorize_json(json_str):
@@ -63,7 +97,7 @@ def scroll_and_load_reviews(driver):
     last_height = 0
     while True:
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)  # Adjust wait time as needed
+        time.sleep(1)  # Adjust wait time as needed
         new_height = driver.execute_script("return document.body.scrollHeight")
         if new_height == last_height:
             break
@@ -114,7 +148,7 @@ def scrape_amazon_reviews(asin):
 
   while True:
       scroll_and_load_reviews(driver)
-      time.sleep(5)  # Introduce a delay after scrolling
+      time.sleep(1)  # Introduce a delay after scrolling
       page_source = driver.page_source
       soup = BeautifulSoup(page_source, 'html.parser')
 
@@ -130,9 +164,50 @@ def scrape_amazon_reviews(asin):
 
   return reviews
 
+def save_reviews_to_file(reviews, filename):
+    """
+    Saves the reviews to a JSON file.
+
+    Args:
+        reviews: A list of dictionaries containing extracted review details.
+        filename: The name of the file to save the reviews to.
+    """
+    with open(filename, 'w') as f:
+        json.dump(reviews, f, indent=4)
+
+def load_reviews_from_file(filename):
+    """
+    Loads the reviews from a JSON file.
+
+    Args:
+        filename: The name of the file containing the reviews.
+
+    Returns:
+        A list of dictionaries containing extracted review details.
+    """
+    with open(filename, 'r') as f:
+        reviews = json.load(f)
+    return reviews
+
 if __name__ == "__main__":
     # asin = input("Enter Amazon product ASIN: ")
     asin = "B07VFHFBLL"
-    reviews = scrape_amazon_reviews(asin)
-    for review in reviews:
-        print(colorize_json(review))
+    reviews_filename = f"json/{asin}_reviews.json"
+
+    # Check if reviews are saved in a file
+    try:
+        reviews = load_reviews_from_file(reviews_filename)
+        print("Reviews loaded from file.")
+    except FileNotFoundError:
+        # If reviews file not found, scrape reviews and save them to a file
+        reviews = scrape_amazon_reviews(asin)
+        save_reviews_to_file(reviews, reviews_filename)
+        print("Reviews scraped and saved to file.")
+
+    is_made_in_china = analyze_reviews_for_origin(reviews)
+    if is_made_in_china:
+        print("The product is likely made in China.")
+    else:
+        print("The product is not necessarily made in China.")
+    # for review in reviews:
+        # print(colorize_json(review))
