@@ -9,7 +9,13 @@ from bs4 import BeautifulSoup
 import json
 from transformers import BertTokenizer, BertForSequenceClassification
 import torch
+import requests
 
+def colorize_output(text, is_red):
+    if is_red:
+        return f"\033[91m{text}\033[0m"  # ANSI escape code for red color
+    else:
+        return f"\033[92m{text}\033[0m"  # ANSI escape code for green color
 
 def analyze_reviews_for_origin(reviews):
     """
@@ -189,25 +195,91 @@ def load_reviews_from_file(filename):
         reviews = json.load(f)
     return reviews
 
+def get_product_info(url):
+    """
+    Fetches the HTML content of the product homepage and extracts relevant information.
+
+    Args:
+        url: The URL of the product homepage on Amazon.
+
+    Returns:
+        A dictionary containing product information.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    # Extract all text from the homepage
+    text = soup.get_text(separator=' ')
+
+    # You can extract more information as needed from the text
+    product_info = {
+        'url': url,
+        'text': text
+        # Add more fields if needed
+    }
+    return product_info
+
+def save_reviews_and_product_info(reviews, product_info, filename):
+    """
+    Saves the reviews and product information to a JSON file.
+
+    Args:
+        reviews: A list of dictionaries containing extracted review details.
+        product_info: A dictionary containing product information.
+        filename: The name of the file to save the data to.
+    """
+    data = {
+        'product_info': product_info,
+        'reviews': reviews
+    }
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+def analyze_product_info(product_info, model):
+    """
+    Analyzes the product information to determine if the product is likely made in China.
+
+    Args:
+        product_info: A dictionary containing product information.
+        model: The pre-trained BERT model for text classification.
+
+    Returns:
+        True if the product is likely made in China, False otherwise.
+    """
+    text = product_info['text']
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    predictions = torch.argmax(outputs.logits, dim=1)
+    # Assuming 1 represents "made in China" class
+    return bool(predictions)
+
 if __name__ == "__main__":
-    # asin = input("Enter Amazon product ASIN: ")
     asin = "B07VFHFBLL"
-    reviews_filename = f"json/{asin}_reviews.json"
+    product_url = f"https://www.amazon.com/dp/{asin}"
+    reviews_filename = f"json/{asin}data.json"
 
-    # Check if reviews are saved in a file
     try:
-        reviews = load_reviews_from_file(reviews_filename)
-        print("Reviews loaded from file.")
+        data = json.load(open(reviews_filename))
+        print("Product data loaded from file.")
     except FileNotFoundError:
-        # If reviews file not found, scrape reviews and save them to a file
+        print("Product data file not found. Scraping data...")
         reviews = scrape_amazon_reviews(asin)
-        save_reviews_to_file(reviews, reviews_filename)
-        print("Reviews scraped and saved to file.")
+        product_info = get_product_info(product_url)
+        save_reviews_and_product_info(reviews, product_info, reviews_filename)
+        data = json.load(open(reviews_filename))
+        print("Product data scraped and saved to file.")
 
-    is_made_in_china = analyze_reviews_for_origin(reviews)
-    if is_made_in_china:
-        print("The product is likely made in China.")
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
+
+    is_made_in_china_info = analyze_product_info(data['product_info'], model)
+    is_made_in_china_reviews = analyze_reviews_for_origin(data['reviews'])
+
+    if is_made_in_china_info or is_made_in_china_reviews:
+        print(colorize_output("The product is likely made in China.", True))
     else:
-        print("The product is not necessarily made in China.")
-    # for review in reviews:
-        # print(colorize_json(review))
+        print(colorize_output("The product is not necessarily made in China.", False))
