@@ -39,16 +39,35 @@ def build_amazon_review_url(asin):
   base_url = f"https://www.amazon.com/product-reviews/{asin}/"
   return base_url
 
-def scroll_and_load_reviews(driver):
-  """
-  Scrolls down the review page to dynamically load more reviews.
+def navigate_to_next_page(driver):
+    """
+    Clicks on the 'Next' button to navigate to the next page of reviews.
 
-  Args:
-      driver: A Selenium WebDriver object representing the browser.
-  """
-  for _ in range(3):
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(2)  # Adjust wait time as needed
+    Args:
+        driver: A Selenium WebDriver object representing the browser.
+    """
+    try:
+        next_button = driver.find_element(By.XPATH, "//li[@class='a-last']/a")
+        next_button.click()
+        return True
+    except:
+        return False
+
+def scroll_and_load_reviews(driver):
+    """
+    Scrolls down the review page to dynamically load all reviews.
+
+    Args:
+        driver: A Selenium WebDriver object representing the browser.
+    """
+    last_height = 0
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)  # Adjust wait time as needed
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
 
 def parse_reviews(soup):
   """
@@ -90,14 +109,23 @@ def scrape_amazon_reviews(asin):
 
   driver = launch_chrome_browser(options)
   url = build_amazon_review_url(asin)
+  reviews = []
   driver.get(url)
 
-  scroll_and_load_reviews(driver)
-  page_source = driver.page_source
-#   print(page_source)
-  soup = BeautifulSoup(page_source, 'html.parser')
+  while True:
+      scroll_and_load_reviews(driver)
+      time.sleep(5)  # Introduce a delay after scrolling
+      page_source = driver.page_source
+      soup = BeautifulSoup(page_source, 'html.parser')
 
-  reviews = parse_reviews(soup)
+      reviews.extend(parse_reviews(soup))
+
+      if not navigate_to_next_page(driver):
+          print("No more reviews to load.")
+          break
+
+      print(f"Scraped {len(reviews)} reviews so far.")
+
   driver.quit()
 
   return reviews
