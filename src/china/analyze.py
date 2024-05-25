@@ -249,6 +249,7 @@ def analyze_reviews_for_origin(reviews):
         if detect_mentions_of_china(review_text):
             print(colorize_output("Found review mentioning China:", True))
             return True
+    print("No reviews mentioning China found.")
     return False
 
 if __name__ == "__main__":
