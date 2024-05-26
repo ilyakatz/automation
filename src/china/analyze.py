@@ -11,6 +11,8 @@ from transformers import BertTokenizer, BertForSequenceClassification
 import spacy
 import os
 
+COMPLETED_FOLDER = "json"
+
 def colorize_output(text, is_red):
     if is_red:
         return f"\033[91m{text}\033[0m"  # ANSI escape code for red color
@@ -307,12 +309,42 @@ def search_amazon(query, query_filename):
     return asin_list
 
 def process_asin(asin):
+    if is_analysis_done(asin):
+        with open(f"{COMPLETED_FOLDER}/analysis_status_{asin}.json", 'r') as f:
+            status_data = json.load(f)
+        made_in_china = status_data.get("made_in_china", None)
+        if made_in_china is not None:
+            if made_in_china:
+                print(colorize_output(f"Analysis already done for ASIN: {asin}. Product is made in China.", True))
+            else:
+                print(colorize_output(f"Analysis already done for ASIN: {asin}. Product is not made in China.", False))
+        else:
+            print(colorize_output(f"Analysis already done for ASIN: {asin}. Result: Unknown", False))
+        return
+    
     print(f"\nProcessing ASIN: {asin}")
     product_url = f"https://www.amazon.com/dp/{asin}"
     reviews_filename = f"json/{asin}.json"
 
+    if not os.path.exists("json"):
+        os.makedirs("json")
+
     data = load_or_scrape_data(asin, product_url, reviews_filename)
-    analyze_product_data(asin, data)
+    made_in_china = analyze_product_data(asin, data)
+    
+    # Mark analysis as done for this ASIN
+    mark_analysis_done(asin, made_in_china)
+
+# Function to check if analysis has been performed for an ASIN
+def is_analysis_done(asin):
+    status_file = f"{COMPLETED_FOLDER}/analysis_status_{asin}.json"
+    return os.path.exists(status_file)
+
+# Function to mark analysis as done for an ASIN
+def mark_analysis_done(asin, made_in_china):
+    status_file = f"{COMPLETED_FOLDER}/analysis_status_{asin}.json"
+    with open(status_file, 'w') as f:
+        json.dump({"status": "done", "made_in_china": made_in_china}, f)
 
 def analyze_product_data(asin, data):
     print("Analyzing product data...")
@@ -320,12 +352,15 @@ def analyze_product_data(asin, data):
     is_made_in_china_info = analyze_product_info(data['product_info'])
     if is_made_in_china_info:
         print(colorize_output(f"The product {asin} is likely made in China.", True))
+        return True
     else:
         is_made_in_china_reviews = analyze_reviews_for_origin(data['reviews'])
         if is_made_in_china_reviews:
             print(colorize_output(f"The product {asin} is likely made in China.", True))
+            return
         else:
             print(colorize_output(f"The product {asin} is not necessarily made in China.", False))
+            return False
 
 def load_or_scrape_data(asin, product_url, reviews_filename):
     try:
@@ -348,7 +383,7 @@ def main():
     query_filename = query.replace(' ', '_')
     
     # Check if ASIN file exists
-    asin_filename = f"asin_list_{query_filename}.json"
+    asin_filename = f"{COMPLETED_FOLDER}/asin_list_{query_filename}.json"
     if os.path.exists(asin_filename):
         with open(asin_filename, 'r') as f:
             asins = json.load(f)
