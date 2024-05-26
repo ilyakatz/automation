@@ -8,9 +8,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import json
 from transformers import BertTokenizer, BertForSequenceClassification
-import torch
-import requests
 import spacy
+import os
 
 def colorize_output(text, is_red):
     if is_red:
@@ -262,23 +261,60 @@ def analyze_reviews_for_origin(reviews):
     print("No reviews mentioning China found.")
     return False
 
-if __name__ == "__main__":
-    asin = input("Enter Amazon product ASIN: ")
+def search_amazon(query, query_filename):
+    """
+    Searches Amazon for a given query and extracts ASINs 
+    (Amazon Standard Identification Numbers) of products.
+    """
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    driver = launch_chrome_browser(options)
+    base_search_url = f"https://www.amazon.com/s?k={query.replace(' ', '+')}&page="
+    
+    asin_list = []
+    page_number = 1
+    while True:
+        search_url = base_search_url + str(page_number)
+        print(f"Searching page {page_number} with URL: {search_url}")
+        driver.get(search_url)
+        time.sleep(2)
+        
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        # Extract ASINs from the current page
+        asins_on_page = [div.get('data-asin') for div in soup.find_all('div', {'data-asin': True}) if div.get('data-asin')]
+        if not asins_on_page:
+            print("No ASINs found on the current page.")
+            break  # Exit the loop if no ASINs are found, indicating no more pages
+
+        print(f"Found {len(asins_on_page)} ASINs on page {page_number}: {asins_on_page}")
+        asin_list.extend(asins_on_page)
+        page_number += 1
+    
+    driver.quit()
+
+    # Save the list of ASINs to a file
+    asin_filename = query_filename
+    with open(asin_filename, 'w') as f:
+        json.dump(asin_list, f, indent=4)
+    print(f"ASIN list saved to file '{asin_filename}'.")
+
+    return asin_list
+
+def process_asin(asin):
+    print(f"\nProcessing ASIN: {asin}")
     product_url = f"https://www.amazon.com/dp/{asin}"
-    print(f"Product URL: {product_url}")
     reviews_filename = f"json/{asin}.json"
 
-    try:
-        data = json.load(open(reviews_filename))
-        print("Product data loaded from file.")
-    except FileNotFoundError:
-        print("Product data file not found. Scraping data...")
-        reviews = scrape_amazon_reviews(asin)
-        product_info = get_product_info(product_url)
-        save_reviews_and_product_info(reviews, product_info, reviews_filename)
-        data = json.load(open(reviews_filename))
-        print("Product data scraped and saved to file.")
+    data = load_or_scrape_data(asin, product_url, reviews_filename)
+    analyze_product_data(asin, data)
 
+def analyze_product_data(asin, data):
     print("Analyzing product data...")
 
     is_made_in_china_info = analyze_product_info(data['product_info'])
@@ -290,3 +326,41 @@ if __name__ == "__main__":
             print(colorize_output(f"The product {asin} is likely made in China.", True))
         else:
             print(colorize_output(f"The product {asin} is not necessarily made in China.", False))
+
+def load_or_scrape_data(asin, product_url, reviews_filename):
+    try:
+        data = json.load(open(reviews_filename))
+        print("Product data loaded from file.")
+    except FileNotFoundError:
+        print("Product data file not found. Scraping data...")
+        reviews = scrape_amazon_reviews(asin)
+        product_info = get_product_info(product_url)
+        save_reviews_and_product_info(reviews, product_info, reviews_filename)
+        data = json.load(open(reviews_filename))
+        print("Product data scraped and saved to file.")
+    return data
+
+def main():
+    query = "outdoor wall sconce"
+    print(f"Searching Amazon for query: {query}")
+    
+    # Modify the query to make it suitable for a file name
+    query_filename = query.replace(' ', '_')
+    
+    # Check if ASIN file exists
+    asin_filename = f"asin_list_{query_filename}.json"
+    if os.path.exists(asin_filename):
+        with open(asin_filename, 'r') as f:
+            asins = json.load(f)
+        print(f"ASINs loaded from file: {asins}")
+    else:
+        print(f"ASIN file '{asin_filename}' not found.")
+        # Perform search if ASIN file does not exist
+        asins = search_amazon(query, asin_filename)
+        print(f"Found ASINs: {asins}")
+
+    for asin in asins:
+        process_asin(asin)
+
+if __name__ == "__main__":
+    main()
