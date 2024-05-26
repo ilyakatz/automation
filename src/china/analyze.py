@@ -300,11 +300,13 @@ def search_amazon(query, query_filename):
     
     driver.quit()
 
-    # Save the list of ASINs to a file
-    asin_filename = query_filename
-    with open(asin_filename, 'w') as f:
-        json.dump(asin_list, f, indent=4)
-    print(f"ASIN list saved to file '{asin_filename}'.")
+    # if asins are not empty, save them to a file
+    if asin_list:
+        # Save the list of ASINs to a file
+        asin_filename = query_filename
+        with open(asin_filename, 'w') as f:
+            json.dump(asin_list, f, indent=4)
+        print(f"ASIN list saved to file '{asin_filename}'.")
 
     return asin_list
 
@@ -383,7 +385,7 @@ def main():
     query_filename = query.replace(' ', '_')
     
     # Check if ASIN file exists
-    asin_filename = f"{COMPLETED_FOLDER}/asin_list_{query_filename}.json"
+    asin_filename = f"{COMPLETED_FOLDER}/asin_list/asin_list_{query_filename}.json"
     if os.path.exists(asin_filename):
         with open(asin_filename, 'r') as f:
             asins = json.load(f)
