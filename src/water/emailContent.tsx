@@ -35,7 +35,7 @@ export const generateEmailBody = (
       </tr>
       <tr>
         <td style="background-color:rgb(217,217,217)">$${avgPerDay.toFixed(2)}</td>
-        <td>${daysOfOccupancy}</td>
+        <td>${daysOfOccupancy.toFixed(0)}</td>
         <td style="background-color:rgb(244,204,204)">$${amountDue}</td>
       </tr>
     </tbody>
