@@ -1,88 +1,55 @@
-// Dynamically load Mapbox CSS
+
 const loadCSS = () => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
-    document.head.appendChild(link);
-};
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+            link.crossOrigin = '';
+            document.head.appendChild(link);
+        };
 
-// Dynamically load Mapbox JS and initialize the map
-const loadMapbox = () => {
-    const script = document.createElement('script');
-    script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
-    script.onload = initializeMap;
-    document.head.appendChild(script);
-};
+        const loadLeaflet = () => {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+            script.crossOrigin = '';
+            script.onload = initializeMap;
+            document.head.appendChild(script);
+        };
 
-const initializeMap = () => {
-    const mapContainer = document.getElementById('map');
-    if (mapContainer.hasChildNodes()) {
-        mapContainer.innerHTML = '';
-    }
-    mapContainer.style.width = '100%';
-    mapContainer.style.height = '500px';
+                const initializeMap = () => {
+            const mapContainer = document.getElementById('map');
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoiaWx5YWthdHoiLCJhIjoiY202eWczc21hMTh1ajJxcHpiNHY4ZWhoaSJ9.zRBF4J8y9g0aVdPEpgcIsQ';
+            // Set width and height of the map container
+            mapContainer.style.width = '800px'; // Example: Set to 800 pixels wide
+            mapContainer.style.height = '600px'; // Example: Set to 600 pixels tall
 
-    const map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v11',
-        center: [-122.3608, 38.40135],
-        zoom: 14
-    });
-
-    map.addControl(new mapboxgl.NavigationControl());
-
-    map.on('load', () => {
-        console.log('Map loaded');
-
-        // Add the tileset source
-        map.addSource('custom-tileset', {
-            type: 'vector',
-            url: 'mapbox://ilyakatz.cm6yfwhuv1iyr1pnn8hvzmg3z-82w71'
-        });
-
-        // Debug: Log source information
-        const source = map.getSource('custom-tileset');
-        console.log('Source:', source);
-
-        // Try these common source layer names
-        const possibleSourceLayers = [
-            'default',
-            'points',
-            'markers',
-            'places',
-            'cm6yfwhuv1iyr1pnn8hvzmg3z-82w71',
-            'ilyakatz.cm6yfwhuv1iyr1pnn8hvzmg3z-82w71'
-        ];
-
-        // Try each possible source layer
-        possibleSourceLayers.forEach(sourceLayer => {
-            try {
-                map.addLayer({
-                    id: `custom-markers-${sourceLayer}`,
-                    type: 'circle',
-                    source: 'custom-tileset',
-                    'source-layer': sourceLayer,
-                    paint: {
-                        'circle-radius': 10,
-                        'circle-color': '#FF0000',
-                        'circle-opacity': 0.8
-                    }
-                });
-                console.log(`Successfully added layer with source-layer: ${sourceLayer}`);
-            } catch (error) {
-                console.log(`Failed to add layer with source-layer: ${sourceLayer}`);
-                console.log(error.message);
+            // Remove any existing map instance
+            if (mapContainer.hasChildNodes()) {
+                mapContainer._leaflet_id = null;
+                mapContainer.innerHTML = '';
             }
-        });
-    });
 
-    // Debug: Log any map errors
-    map.on('error', (e) => {
-        console.error('Map error:', e);
-    });
-};
+            const map = L.map('map').setView([51.505, -0.09], 13);
 
-loadCSS();
-loadMapbox();
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            L.marker([51.5, -0.09]).addTo(map)
+                .bindPopup('<b>Hello world!</b><br />I am a popup.')
+                .openPopup();
+        };
+
+        loadCSS();
+        loadLeaflet();
+
+/**
+ * fetch('https://raw.githubusercontent.com/ilyakatz/automation/refs/heads/master/src/website/map.js')
+    .then(response => response.text())
+    .then(code => {
+        const script = document.createElement('script');
+        script.text = code;
+        document.head.appendChild(script);
+    });
+ */
