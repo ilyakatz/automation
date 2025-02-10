@@ -1,5 +1,4 @@
-
-const loadCSS = () => {
+        const loadCSS = () => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -17,28 +16,34 @@ const loadCSS = () => {
             document.head.appendChild(script);
         };
 
-                const initializeMap = () => {
+        const initializeMap = () => {
             const mapContainer = document.getElementById('map');
+            mapContainer.style.width = '100%';
+            mapContainer.style.height = '600px';
 
-            // Set width and height of the map container
-            mapContainer.style.width = '800px'; // Example: Set to 800 pixels wide
-            mapContainer.style.height = '600px'; // Example: Set to 600 pixels tall
-
-            // Remove any existing map instance
             if (mapContainer.hasChildNodes()) {
                 mapContainer._leaflet_id = null;
                 mapContainer.innerHTML = '';
             }
 
-            const map = L.map('map').setView([51.505, -0.09], 13);
+            const map = L.map('map').setView([40.7128, -74.0060], 4); 
 
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            L.marker([51.5, -0.09]).addTo(map)
-                .bindPopup('<b>Hello world!</b><br />I am a popup.')
-                .openPopup();
+            const markers = [
+                { coords: [37.7749, -122.4194], city: 'San Francisco' }, 
+                { coords: [40.7128, -74.0060], city: 'New York City' },   
+                { coords: [51.5074, -0.1278], city: 'London' }          
+            ];
+
+            markers.forEach(markerData => {
+                L.marker(markerData.coords)
+                    .addTo(map)
+                    .bindPopup(`<b>${markerData.city}</b>`)
+                    .openPopup();
+            });
         };
 
         loadCSS();
