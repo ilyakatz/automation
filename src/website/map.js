@@ -42,7 +42,7 @@ const loadCSS = () => {
         };
 
         loadCSS();
-        loadLeaflet();
+        loadLeaflet(); 
 
 /**
  * fetch('https://raw.githubusercontent.com/ilyakatz/automation/refs/heads/master/src/website/map.js')
