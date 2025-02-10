@@ -32,25 +32,40 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            const markers = [
-                { coords: [37.7749, -122.4194], city: 'San Francisco' }, 
-                { coords: [40.7128, -74.0060], city: 'New York City' },   
-                { coords: [51.5074, -0.1278], city: 'London' }          
-            ];
+              const markers = [
+    {
+      coords: [37.7749, -122.4194],
+      city: 'San Francisco',
+      url: 'https://perfectloopnet.wordpress.com/2025/02/09/a-magical-dining-experience-my-night-at-the-french-laundry/'
+    },
+    {
+      coords: [40.7128, -74.0060],
+      city: 'New York City',
+      url: 'https://perfectloopnet.wordpress.com/2025/02/09/a-magical-dining-experience-my-night-at-the-french-laundry/'
+    },
+    {
+      coords: [51.5074, -0.1278],
+      city: 'London',
+      url: 'https://perfectloopnet.wordpress.com/2025/02/09/a-magical-dining-experience-my-night-at-the-french-laundry/'
+    }
+  ];
 
-            markers.forEach(markerData => {
-                L.marker(markerData.coords)
-                    .addTo(map)
-                    .bindPopup(`<b>${markerData.city}</b>`)
-                    .openPopup();
-            });
+              markers.forEach(markerData => {
+    L.marker(markerData.coords)
+      .addTo(map)
+      .bindPopup(`<b>${markerData.city}</b>`)
+      .on('click', () => {
+        window.location.href = markerData.url;
+      });
+  });
         };
 
         loadCSS();
         loadLeaflet(); 
 
 /**
- * fetch('https://raw.githubusercontent.com/ilyakatz/automation/refs/heads/master/src/website/map.js')
+ *
+ fetch('https://raw.githubusercontent.com/ilyakatz/automation/refs/heads/master/src/website/map.js?t=1')
     .then(response => response.text())
     .then(code => {
         const script = document.createElement('script');
