@@ -18,12 +18,13 @@
     "puppeteer": "^22.9.0",
     "sharp": "^0.33.4",
     "string-width": "^7.1.0",
+    "ts-node": "^10.9.2",
     "yargs": "^17.7.2"
   },
   "scripts": {
-    "water": "ts-node src/water/index.ts",
-    "comics": "ts-node src/comics/index.ts",
-    "comics-man": "ts-node src/comics-man/index.ts",
+    "water": "yarn ts-node src/water/index.ts",
+    "comics": "yarn ts-node src/comics/index.ts",
+    "comics-man": "yarn ts-node src/comics-man/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
