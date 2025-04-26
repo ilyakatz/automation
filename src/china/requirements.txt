@@ -1,8 +1,0 @@
-requests
-setuptools
-beautifulsoup4
-selenium
-webdriver_manager
-transformers
-torch
-spacy
